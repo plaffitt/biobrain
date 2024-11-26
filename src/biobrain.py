@@ -19,7 +19,10 @@ class NeuralNetwork:
 
     def __init__(self, activation=defaultActivation):
         self._activation = activation
-        self._neuron = ([np.random.randn(), np.random.randn()], (np.random.randn()))
+        self._network = (
+            [np.random.randn(), np.random.randn()], # weigths
+            (np.random.randn())                     # biais
+        )
 
     def train(self, trainingList, learningRate=0.1, chunkSize=0, maxIterations=0):
         self.trainingList = trainingList
@@ -52,7 +55,7 @@ class NeuralNetwork:
     def save(self, filename, meanPrecision=100):
         try:
             with open(filename, 'w+') as file:
-                file.write(json.dumps([self._activation, self._neuron, self.getMeanCost(self.trainingList[:meanPrecision])]))
+                file.write(json.dumps([self._activation, self._network, self.getMeanCost(self.trainingList[:meanPrecision])]))
                 print('Brain saved at \'' + filename + '\'')
         except PermissionError:
             raise BiobrainException('Oops.. Permission denied!')
@@ -60,7 +63,7 @@ class NeuralNetwork:
     def load(self, filename):
         try:
             with open(filename, 'r') as file:
-                self._activation, self._neuron, meanCost = json.load(file)
+                self._activation, self._network, meanCost = json.load(file)
                 print('Brain loaded from \'' + filename + '\'\nEstimated mean cost: ' + str(meanCost))
         except FileNotFoundError:
             raise BiobrainException('Oops.. File not found!')
@@ -85,13 +88,13 @@ class NeuralNetwork:
             return value - learningRate * costD_valueD
 
         def calibrateNeuron(neuron):
-            weigths, biais  = self._neuron
+            weigths, biais  = self._network
             newWeights      = [calibrate(w, p) for w, p in zip(weigths, targetInputs)]
             biais           = calibrate(biais, 1)
 
             return newWeights, biais
 
-        self._neuron = calibrateNeuron(self._neuron)
+        self._network = calibrateNeuron(self._network)
 
     def _calcCost(self, targetOutput, evaluation):
         return np.square(evaluation - targetOutput)
@@ -100,7 +103,7 @@ class NeuralNetwork:
         return 2 * (evaluation - targetOutput)
 
     def _accumulate(self, data):
-        weigths, biais = self._neuron
+        weigths, biais = self._network
         return sum([w * d for w, d in zip(weigths, data)]) + biais
 
     def _activate(self, signal, derivate=False):
